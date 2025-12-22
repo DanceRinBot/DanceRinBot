@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.mirai.config.AbstractConfig.configPath;
+import static java.lang.Thread.sleep;
 
 public final class TokenBuilder {
     //公用 ids
@@ -88,21 +89,21 @@ public final class TokenBuilder {
     }
 
     private String getQrcodeUrl(String id) {
-        //对于含有'+' '/'等符号的TokenId会自动url编码
+        // 对于含有'+' '/'等符号的TokenId会自动url编码
         id = URLEncoder.encode(id, StandardCharsets.UTF_8);
 
-        String string = "";
+        String string = id + "%n"; // 修改为 id + 换行符
         try {
             Response response = HttpUtil.httpApi("https://dancedemo.shenghuayule.com/Dance/api/Common/GetQrCode?id=" + id);
-            if(response!=null && response.body()!=null) {
-                string = response.body().string();
+            if (response != null && response.body() != null) {
+                string += response.body().string(); // 保留原有逻辑
                 response.close(); // 释放
                 return JsonParser.parseString(string).getAsJsonObject().get("QrcodeUrl").getAsString();
             }
             return "";
-        } catch(IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
-        } catch(NullPointerException e) {
+        } catch (NullPointerException e) {
             System.out.println(string);
             ids.remove(index);
             System.out.println("# ID:" + id + " 不可用已删除，还剩下" + getSize() + "条");
@@ -129,18 +130,7 @@ public final class TokenBuilder {
         }
     }
 
-    @Test
-    public void testID() throws InterruptedException {
-        ArrayList<String> strings = new ArrayList<>();
-        for(int i = 0; i<100; i++) {
-            String id = getNewID();
-            Thread.sleep(100);
-            if(id.isBlank()) continue;
-            strings.add("\"" + id + "\"");
-        }
-        System.out.println(strings);
-        System.out.println("共 " + strings.size());
-    }
+
 
     public Token getToken() {
         return getToken(id);
@@ -219,15 +209,6 @@ public final class TokenBuilder {
         return tokensFromFile(filePath, false);
     }
 
-
-    @Test
-    public void main() {
-        TokenBuilder builder = new TokenBuilder();
-        System.out.println("url:" + builder.getQrcodeUrl());
-        Token token = builder.getToken();
-        System.out.println("your id:" + token.getUserId());
-    }
-
     @Deprecated
     public void autoRefreshToken() {
         Scheduler scheduler;
@@ -247,5 +228,21 @@ public final class TokenBuilder {
         } catch(SchedulerException e) {
             throw new RuntimeException(e);
         }
+    }
+    @Test
+    public void testID() throws InterruptedException {
+        ArrayList<String> strings = new ArrayList<>();
+        for (int i = 0; i <= 1; i++) {
+            String id = getNewID();
+            Thread.sleep(500);
+            if (id.isBlank()) continue;
+            if (strings.contains("出现错误。")) {
+                break;
+            }
+            strings.add("\"" + id + "\"");
+        }
+        // 在输出前添加TAB空格符
+        System.out.println("\t" + String.join(",\n\t", strings));
+        System.out.println("共 " + strings.size());
     }
 }
